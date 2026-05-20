@@ -10,6 +10,8 @@ class Lead(Base):
     property_type = Column(String)
     contact = Column(String)
     status = Column(String, default="warm")
+    score = Column(Integer, default=0)
+    intent = Column(String, default="Buy")
     created_at = Column(DateTime, default=func.now())
 
 class Campaign(Base):
@@ -39,3 +41,11 @@ class User(Base):
     hashed_password = Column(String)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=func.now())
+
+class LeadPropertyMatch(Base):
+    __tablename__ = "lead_property_matches"
+    id = Column(Integer, primary_key=True, index=True)
+    lead_id = Column(Integer)
+    property_id = Column(Integer)
+    match_score = Column(Float)
+    created_at = Column(DateTime, default=func.now())    

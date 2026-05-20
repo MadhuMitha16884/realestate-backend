@@ -168,3 +168,134 @@ def chat(request: schemas.ChatRequest):
 @router.get("/health")
 def health():
     return {"status": "healthy", "message": "Backend is running!"}
+
+@router.post("/ai/score-lead")
+def score_lead(lead_id: int, db: Session = Depends(get_db)):
+    lead = db.query(models.Lead).filter(models.Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    prompt = f"""
+    Score this real estate lead from 0 to 100 based on buying potential.
+    Name: {lead.name}
+    Budget: {lead.budget}
+    Property Type: {lead.property_type}
+    Intent: {lead.intent}
+    Current Status: {lead.status}
+    Rules:
+    - Higher budget = higher score
+    - Hot status = higher score
+    - Buy/Invest intent = higher score
+    - Rent intent = lower score
+    Reply with ONLY a number between 0 and 100. Nothing else.
+    """
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": "You are a real estate lead scoring expert. Reply only with a number."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    try:
+        score = int(response.choices[0].message.content.strip())
+        score = max(0, min(100, score))
+    except:
+        score = 50
+    lead.score = score
+    db.commit()
+    return {"lead_id": lead_id, "name": lead.name, "score": score, "message": f"Lead scored {score}/100"}
+
+
+@router.post("/ai/match-property")
+def match_property(lead_id: int, db: Session = Depends(get_db)):
+    lead = db.query(models.Lead).filter(models.Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    properties = db.query(models.Property).filter(models.Property.status == "available").all()
+    if not properties:
+        return {"message": "No properties available for matching"}
+    props_text = "\n".join([
+        f"ID:{p.id} Name:{p.name} Type:{p.property_type} Price:₹{p.price} Location:{p.address}"
+        for p in properties
+    ])
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    prompt = f"""
+    Match this lead to the best property from the list below.
+    Lead:
+    - Budget: {lead.budget}
+    - Property Type: {lead.property_type}
+    - Intent: {lead.intent}
+    Available Properties:
+    {props_text}
+    Reply with ONLY the property ID number that best matches. Nothing else.
+    """
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": "You are a real estate matching expert. Reply only with a property ID number."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    try:
+        matched_id = int(response.choices[0].message.content.strip())
+        matched = db.query(models.Property).filter(models.Property.id == matched_id).first()
+    except:
+        matched = properties[0]
+    if matched:
+        match = models.LeadPropertyMatch(
+            lead_id=lead_id,
+            property_id=matched.id,
+            match_score=0.95
+        )
+        db.add(match)
+        db.commit()
+    return {
+        "lead_id": lead_id,
+        "lead_name": lead.name,
+        "matched_property": matched.name if matched else "None",
+        "property_address": matched.address if matched else "None",
+        "property_price": matched.price if matched else 0,
+        "message": "Best property matched by AI!"
+    }
+
+
+@router.get("/analytics/leads-by-day")
+def leads_by_day(db: Session = Depends(get_db)):
+    from sqlalchemy import cast, Date
+    results = db.query(
+        cast(models.Lead.created_at, Date).label("date"),
+        func.count(models.Lead.id).label("count")
+    ).group_by(cast(models.Lead.created_at, Date)).order_by("date").all()
+    return [{"date": str(r.date), "count": r.count} for r in results]
+
+
+@router.get("/analytics/funnel")
+def conversion_funnel(db: Session = Depends(get_db)):
+    total = db.query(func.count(models.Lead.id)).scalar()
+    hot = db.query(func.count(models.Lead.id)).filter(models.Lead.status == "hot").scalar()
+    warm = db.query(func.count(models.Lead.id)).filter(models.Lead.status == "warm").scalar()
+    cold = db.query(func.count(models.Lead.id)).filter(models.Lead.status == "cold").scalar()
+    return {
+        "total_leads": total,
+        "warm_leads": warm,
+        "hot_leads": hot,
+        "cold_leads": cold,
+        "conversion_rate": f"{round((hot / total * 100), 1) if total > 0 else 0}%"
+    }
+
+
+@router.get("/analytics/budget-distribution")
+def budget_distribution(db: Session = Depends(get_db)):
+    leads = db.query(models.Lead).all()
+    distribution = {"Under 30L": 0, "30L-50L": 0, "50L-1Cr": 0, "Above 1Cr": 0}
+    for lead in leads:
+        budget = lead.budget.lower().replace(" ", "")
+        if "cr" in budget or "crore" in budget:
+            distribution["Above 1Cr"] += 1
+        elif any(x in budget for x in ["50l", "60l", "70l", "80l", "90l"]):
+            distribution["50L-1Cr"] += 1
+        elif any(x in budget for x in ["30l", "35l", "40l", "45l"]):
+            distribution["30L-50L"] += 1
+        else:
+            distribution["Under 30L"] += 1
+    return distribution
