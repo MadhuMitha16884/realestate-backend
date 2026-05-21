@@ -18,13 +18,14 @@ class LeadCreate(BaseModel):
 class LeadResponse(BaseModel):
     id: int
     name: str
-    phone: str
-    email: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
     budget: Optional[str] = None
     property_type: Optional[str] = None
     property_title: Optional[str] = None
     property_price: Optional[str] = None
     property_location: Optional[str] = None
+    status: Optional[str] = None
 
     class Config:
         from_attributes = True
