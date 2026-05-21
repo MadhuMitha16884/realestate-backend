@@ -4,15 +4,20 @@ from app.database import Base
 
 class Lead(Base):
     __tablename__ = "leads"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String)
-    budget = Column(String)
-    property_type = Column(String)
-    contact = Column(String)
-    status = Column(String, default="warm")
-    score = Column(Integer, default=0)
-    intent = Column(String, default="Buy")
-    created_at = Column(DateTime, default=func.now())
+    id               = Column(Integer, primary_key=True, index=True)
+    name             = Column(String)
+    budget           = Column(String)
+    property_type    = Column(String)
+    contact          = Column(String)
+    phone            = Column(String)            # ✅ NEW
+    email            = Column(String)            # ✅ NEW
+    property_title   = Column(String)            # ✅ NEW
+    property_price   = Column(String)            # ✅ NEW
+    property_location = Column(String)           # ✅ NEW
+    status           = Column(String, default="warm")
+    score            = Column(Integer, default=0)
+    intent           = Column(String, default="Buy")
+    created_at       = Column(DateTime, default=func.now())
 
 class Campaign(Base):
     __tablename__ = "campaigns"
