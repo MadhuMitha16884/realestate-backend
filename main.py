@@ -1,8 +1,10 @@
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
 from app.routes import router
 
+load_dotenv()
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()

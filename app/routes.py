@@ -9,6 +9,16 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 import os
+from twilio.rest import Client as TwilioClient
+
+# Twilio setup — reads from .env
+twilio_client = TwilioClient(
+    os.getenv("TWILIO_ACCOUNT_SID"),
+    os.getenv("TWILIO_AUTH_TOKEN")
+)
+TWILIO_FROM        = os.getenv("TWILIO_FROM_NUMBER")
+AGENT_PHONE        = os.getenv("AGENT_PHONE_NUMBER")
+WHATSAPP_FROM      = os.getenv("TWILIO_WHATSAPP_FROM")  # whatsapp:+14155238886
 
 router = APIRouter()
 
@@ -45,6 +55,55 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise HTTPException(status_code=401, detail="User not found")
     return user
 
+
+def send_sms_to_agent(lead_name: str, lead_phone: str, lead_email: str):
+    """Sends SMS alert to agent when a new lead is created."""
+    try:
+        message = twilio_client.messages.create(
+            body=(
+                f"🏠 New Lead Alert!\n"
+                f"Name:  {lead_name}\n"
+                f"Phone: {lead_phone}\n"
+                f"Email: {lead_email}\n"
+                f"Login to your dashboard to follow up."
+            ),
+            from_=TWILIO_FROM,
+            to=AGENT_PHONE
+        )
+        print(f"SMS sent to agent. SID: {message.sid}")
+        return True
+    except Exception as e:
+        print(f"SMS failed: {e}")
+        return False
+
+
+def send_whatsapp_to_lead(lead_phone: str, lead_name: str, property_title: str,
+                           property_price: str, property_location: str):
+    """Sends WhatsApp message to lead with property details."""
+    try:
+        # Lead phone must be in format: whatsapp:+91xxxxxxxxxx
+        to_whatsapp = f"whatsapp:{lead_phone}"
+        
+        message = twilio_client.messages.create(
+            body=(
+                f"Hello {lead_name}! 👋\n\n"
+                f"Thank you for your interest. Here are the property details:\n\n"
+                f"🏡 *{property_title}*\n"
+                f"📍 Location: {property_location}\n"
+                f"💰 Price: {property_price}\n\n"
+                f"Our agent will contact you shortly. "
+                f"Reply to this message with any questions!"
+            ),
+            from_=WHATSAPP_FROM,
+            to=to_whatsapp
+        )
+        print(f"WhatsApp sent to lead. SID: {message.sid}")
+        return True
+    except Exception as e:
+        print(f"WhatsApp failed: {e}")
+        return False
+
+
 # ── AUTH ROUTES ────────────────────────────────────────────────────────────────
 @router.post("/auth/register", response_model=schemas.UserResponse)
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
@@ -71,12 +130,36 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
 
 # ── LEAD ROUTES ────────────────────────────────────────────────────────────────
 @router.post("/lead", response_model=dict)
-def create_lead(lead: schemas.LeadCreate, db: Session = Depends(get_db)):
-    db_lead = models.Lead(**lead.model_dump())
+async def create_lead(lead: schemas.LeadCreate, db: Session = Depends(get_db)):
+    db_lead = models.Lead(
+        name=lead.name,
+        budget=lead.budget,
+        property_type=lead.property_type,
+        contact=lead.phone or lead.contact or "",
+        status=lead.status or "warm"
+    )
     db.add(db_lead)
     db.commit()
     db.refresh(db_lead)
-    return {"message": "Lead saved successfully!", "id": db_lead.id}
+
+    # ✅ NEW: Send SMS to agent
+    send_sms_to_agent(
+        lead_name=lead.name,
+        lead_phone=lead.phone or lead.contact or "",
+        lead_email=lead.email or ""
+    )
+
+    # ✅ NEW: Send WhatsApp to lead with property info
+    if (lead.phone or lead.contact) and getattr(lead, "property_title", None):
+        send_whatsapp_to_lead(
+            lead_phone=lead.phone or lead.contact,
+            lead_name=lead.name,
+            property_title=lead.property_title,
+            property_price=lead.property_price or "Contact us",
+            property_location=lead.property_location or "See listing"
+        )
+
+    return {"message": "Lead created successfully", "lead_id": db_lead.id}
 
 @router.get("/leads", response_model=list[schemas.LeadResponse])
 def get_leads(skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):

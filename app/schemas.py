@@ -5,9 +5,14 @@ from datetime import datetime
 # ── LEAD ──────────────────────────────────────
 class LeadCreate(BaseModel):
     name: str
-    budget: str
-    property_type: str
-    contact: str
+    budget: Optional[str] = None
+    property_type: Optional[str] = None
+    contact: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    property_title: Optional[str] = None
+    property_price: Optional[str] = None
+    property_location: Optional[str] = None
     status: Optional[str] = "warm"
 
 class LeadResponse(BaseModel):
