@@ -18,12 +18,16 @@ class LeadCreate(BaseModel):
 class LeadResponse(BaseModel):
     id: int
     name: str
+    phone: str
+    email: str
     budget: Optional[str] = None
     property_type: Optional[str] = None
-    contact: Optional[str] = None
-    status: str
-    created_at: datetime
-    model_config = {"from_attributes": True}
+    property_title: Optional[str] = None
+    property_price: Optional[str] = None
+    property_location: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 # ── CAMPAIGN ───────────────────────────────────
 class CampaignCreate(BaseModel):

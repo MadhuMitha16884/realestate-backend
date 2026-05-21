@@ -126,7 +126,7 @@ def call_lead_with_welcome(lead_phone: str, lead_name: str, property_title: str,
         print(f"Lead call initiated. SID: {call.sid}")
         return True
     except Exception as e:
-        print(f"Lead call failed: {e}")
+        print(f"❌ Lead call FULL ERROR: {str(e)}")
         return False
 
 
