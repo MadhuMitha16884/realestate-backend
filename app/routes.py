@@ -16,7 +16,7 @@ twilio_client = TwilioClient(
     os.getenv("TWILIO_ACCOUNT_SID"),
     os.getenv("TWILIO_AUTH_TOKEN")
 )
-TWILIO_FROM        = os.getenv("TWILIO_FROM_NUMBER")
+TWILIO_FROM        = os.getenv("TWILIO_PHONE_NUMBER")
 AGENT_PHONE        = os.getenv("AGENT_PHONE_NUMBER")
 WHATSAPP_FROM      = os.getenv("TWILIO_WHATSAPP_FROM")  # whatsapp:+14155238886
 
@@ -102,6 +102,21 @@ def send_whatsapp_to_lead(lead_phone: str, lead_name: str, property_title: str,
     except Exception as e:
         print(f"WhatsApp failed: {e}")
         return False
+
+
+@router.get("/test-twilio")
+def test_twilio_config():
+    sid = os.getenv("TWILIO_ACCOUNT_SID")
+    phone = os.getenv("TWILIO_PHONE_NUMBER")
+    agent = os.getenv("AGENT_PHONE_NUMBER")
+    whatsapp = os.getenv("TWILIO_WHATSAPP_FROM")
+    return {
+        "sid_loaded": bool(sid),
+        "sid_prefix": sid[:8] + "..." if sid else "MISSING",
+        "from_phone": phone or "MISSING",
+        "agent_phone": agent or "MISSING",
+        "whatsapp_from": whatsapp or "MISSING"
+    }
 
 
 # ── AUTH ROUTES ────────────────────────────────────────────────────────────────
