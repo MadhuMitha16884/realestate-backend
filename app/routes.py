@@ -77,6 +77,59 @@ def send_sms_to_agent(lead_name: str, lead_phone: str, lead_email: str):
         return False
 
 
+def call_agent_for_new_lead(lead_name: str, lead_phone: str, lead_email: str):
+    """Calls the agent and reads out the new lead details using text-to-speech."""
+    try:
+        call = twilio_client.calls.create(
+            twiml=f"""
+                <Response>
+                    <Say voice="alice">
+                        Hello! You have a new real estate lead.
+                        Name: {lead_name}.
+                        Phone: {lead_phone}.
+                        Email: {lead_email}.
+                        Please follow up as soon as possible.
+                        Goodbye!
+                    </Say>
+                </Response>
+            """,
+            from_=TWILIO_FROM,
+            to=AGENT_PHONE
+        )
+        print(f"Agent call initiated. SID: {call.sid}")
+        return True
+    except Exception as e:
+        print(f"Agent call failed: {e}")
+        return False
+
+
+def call_lead_with_welcome(lead_phone: str, lead_name: str, property_title: str,
+                            property_location: str, property_price: str):
+    """Calls the lead and plays a welcome message about the property."""
+    try:
+        call = twilio_client.calls.create(
+            twiml=f"""
+                <Response>
+                    <Say voice="alice">
+                        Hello {lead_name}! Welcome to our real estate service.
+                        Thank you for your interest in {property_title},
+                        located in {property_location},
+                        priced at {property_price}.
+                        Our agent will contact you shortly with more details.
+                        Thank you and have a great day!
+                    </Say>
+                </Response>
+            """,
+            from_=TWILIO_FROM,
+            to=lead_phone
+        )
+        print(f"Lead call initiated. SID: {call.sid}")
+        return True
+    except Exception as e:
+        print(f"Lead call failed: {e}")
+        return False
+
+
 def send_whatsapp_to_lead(lead_phone: str, lead_name: str, property_title: str,
                            property_price: str, property_location: str):
     """Sends WhatsApp message to lead with property details."""
@@ -174,7 +227,45 @@ async def create_lead(lead: schemas.LeadCreate, db: Session = Depends(get_db)):
             property_location=lead.property_location or "See listing"
         )
 
+    # ✅ NEW: Call agent
+    call_agent_for_new_lead(
+        lead.name,
+        lead.phone or lead.contact or "",
+        lead.email or ""
+    )
+
+    # ✅ NEW: Call lead
+    if (lead.phone or lead.contact) and getattr(lead, "property_title", None):
+        call_lead_with_welcome(
+            lead.phone or lead.contact,
+            lead.name,
+            lead.property_title,
+            lead.property_location or "See listing",
+            lead.property_price or "Contact us"
+        )
+
     return {"message": "Lead created successfully", "lead_id": db_lead.id}
+
+@router.post("/lead/{lead_id}/call")
+async def trigger_call(lead_id: int, db: Session = Depends(get_db)):
+    """Manually trigger a call to a lead by their ID."""
+    lead = db.query(models.Lead).filter(models.Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    lead_phone = getattr(lead, "phone", None) or lead.contact
+    success = call_lead_with_welcome(
+        lead_phone=lead_phone,
+        lead_name=lead.name,
+        property_title=getattr(lead, "property_title", None) or "our property",
+        property_location=getattr(lead, "property_location", None) or "prime location",
+        property_price=getattr(lead, "property_price", None) or "competitive price"
+    )
+
+    if success:
+        return {"message": f"Call initiated to {lead.name} at {lead_phone}"}
+    else:
+        raise HTTPException(status_code=500, detail="Call failed — check Render logs")
 
 @router.get("/leads", response_model=list[schemas.LeadResponse])
 def get_leads(skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):
