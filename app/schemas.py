@@ -18,9 +18,9 @@ class LeadCreate(BaseModel):
 class LeadResponse(BaseModel):
     id: int
     name: str
-    budget: str
-    property_type: str
-    contact: str
+    budget: Optional[str] = None
+    property_type: Optional[str] = None
+    contact: Optional[str] = None
     status: str
     created_at: datetime
     model_config = {"from_attributes": True}
