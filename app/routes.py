@@ -210,41 +210,7 @@ async def create_lead(lead: schemas.LeadCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_lead)
 
-    # ✅ NEW: Send SMS to agent
-    send_sms_to_agent(
-        lead_name=lead.name,
-        lead_phone=lead.phone or lead.contact or "",
-        lead_email=lead.email or ""
-    )
-
-    # ✅ NEW: Send WhatsApp to lead with property info
-    if (lead.phone or lead.contact) and getattr(lead, "property_title", None):
-        send_whatsapp_to_lead(
-            lead_phone=lead.phone or lead.contact,
-            lead_name=lead.name,
-            property_title=lead.property_title,
-            property_price=lead.property_price or "Contact us",
-            property_location=lead.property_location or "See listing"
-        )
-
-    # ✅ NEW: Call agent
-    call_agent_for_new_lead(
-        lead.name,
-        lead.phone or lead.contact or "",
-        lead.email or ""
-    )
-
-    # ✅ NEW: Call lead
-    if (lead.phone or lead.contact) and getattr(lead, "property_title", None):
-        call_lead_with_welcome(
-            lead.phone or lead.contact,
-            lead.name,
-            lead.property_title,
-            lead.property_location or "See listing",
-            lead.property_price or "Contact us"
-        )
-
-    return {"message": "Lead created successfully", "lead_id": db_lead.id}
+    return {"lead_id": db_lead.id}
 
 @router.post("/lead/{lead_id}/call")
 async def trigger_call(lead_id: int, db: Session = Depends(get_db)):
