@@ -77,6 +77,9 @@ class UserResponse(BaseModel):
     id: int
     email: str
     name: str
+    phone: Optional[str] = None
+    company: Optional[str] = None
+    role: Optional[str] = "agent"
     model_config = {"from_attributes": True}
 
 class Token(BaseModel):

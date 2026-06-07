@@ -45,6 +45,9 @@ class User(Base):
     name = Column(String)
     hashed_password = Column(String)
     is_active = Column(Boolean, default=True)
+    phone = Column(String, nullable=True)
+    company = Column(String, nullable=True)
+    role = Column(String, default="agent")
     created_at = Column(DateTime, default=func.now())
 
 class LeadPropertyMatch(Base):

@@ -507,3 +507,18 @@ def budget_distribution(db: Session = Depends(get_db)):
         else:
             distribution["Under 30L"] += 1
     return distribution
+
+@router.get("/auth/me", response_model=schemas.UserResponse)
+def get_me(current_user: models.User = Depends(get_current_user)):
+    return current_user
+
+@router.put("/auth/profile")
+def update_profile(
+    name: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    current_user.name = name
+    db.commit()
+    db.refresh(current_user)
+    return {"message": "Profile updated!", "name": current_user.name}
