@@ -342,16 +342,35 @@ def get_properties(db: Session = Depends(get_db)):
 
 # ── CHAT ROUTE ─────────────────────────────────────────────────────────────────
 @router.post("/chat")
-def chat(request: schemas.ChatRequest):
+def chat(request: schemas.ChatRequest, db: Session = Depends(get_db)):
+    session_id = request.session_id or "default"
+
+    history = db.query(models.ChatSession).filter(
+        models.ChatSession.session_id == session_id
+    ).order_by(models.ChatSession.created_at).all()
+
+    messages = [
+        {"role": "system", "content": "You are a helpful real estate assistant in India. Remember the user's name and details throughout the conversation. Suggest properties based on user needs."}
+    ]
+
+    for h in history:
+        messages.append({"role": h.role, "content": h.content})
+
+    messages.append({"role": "user", "content": request.message})
+
     client = Groq(api_key=os.getenv("GROQ_API_KEY"))
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
-        messages=[
-            {"role": "system", "content": "You are a helpful real estate assistant in India. Suggest properties based on user needs. Be specific about locations, prices and property types."},
-            {"role": "user", "content": request.message}
-        ]
+        messages=messages
     )
-    return {"response": response.choices[0].message.content}
+
+    ai_reply = response.choices[0].message.content
+
+    db.add(models.ChatSession(session_id=session_id, role="user", content=request.message))
+    db.add(models.ChatSession(session_id=session_id, role="assistant", content=ai_reply))
+    db.commit()
+
+    return {"response": ai_reply, "session_id": session_id}
 
 # ── HEALTH CHECK ───────────────────────────────────────────────────────────────
 @router.get("/health")
