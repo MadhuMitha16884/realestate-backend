@@ -515,10 +515,34 @@ def get_me(current_user: models.User = Depends(get_current_user)):
 @router.put("/auth/profile")
 def update_profile(
     name: str,
+    phone: Optional[str] = None,
+    company: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
     current_user.name = name
+    if phone:
+        current_user.phone = phone
+    if company:
+        current_user.company = company
     db.commit()
     db.refresh(current_user)
-    return {"message": "Profile updated!", "name": current_user.name}
+    return {
+        "message": "Profile updated!",
+        "name": current_user.name,
+        "phone": current_user.phone,
+        "company": current_user.company
+    }
+
+@router.put("/auth/change-password")
+def change_password(
+    old_password: str,
+    new_password: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    if not verify_password(old_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password is wrong!")
+    current_user.hashed_password = hash_password(new_password)
+    db.commit()
+    return {"message": "Password changed successfully!"}
