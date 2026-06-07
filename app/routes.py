@@ -352,7 +352,7 @@ def chat(request: schemas.ChatRequest, db: Session = Depends(get_db)):
     messages = [
         {"role": "system", "content": "You are a helpful real estate assistant in India. Remember the user's name and details throughout the conversation. Suggest properties based on user needs."}
     ]
-
+    
     for h in history:
         messages.append({"role": h.role, "content": h.content})
 

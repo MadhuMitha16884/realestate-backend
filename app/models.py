@@ -53,4 +53,12 @@ class LeadPropertyMatch(Base):
     lead_id = Column(Integer)
     property_id = Column(Integer)
     match_score = Column(Float)
+    created_at = Column(DateTime, default=func.now()) 
+
+class ChatSession(Base):
+    __tablename__ = "chat_sessions"
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(String, nullable=False)
+    role = Column(String, nullable=False)
+    content = Column(String, nullable=False)
     created_at = Column(DateTime, default=func.now())    

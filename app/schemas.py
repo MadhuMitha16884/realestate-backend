@@ -86,3 +86,4 @@ class Token(BaseModel):
 # ── CHAT ───────────────────────────────────────
 class ChatRequest(BaseModel):
     message: str
+    session_id: Optional[str] = "default"
