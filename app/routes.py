@@ -10,6 +10,39 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta
 import os
 from twilio.rest import Client as TwilioClient
+import csv
+import io
+from fastapi import UploadFile, File
+
+@router.post("/leads/import")
+async def import_leads(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Only CSV files allowed!")
+    contents = await file.read()
+    decoded = contents.decode('utf-8')
+    reader = csv.DictReader(io.StringIO(decoded))
+    saved = 0
+    errors = []
+    for row in reader:
+        try:
+            lead = models.Lead(
+                name=row.get('name', ''),
+                budget=row.get('budget', ''),
+                property_type=row.get('property_type', 'Apartment'),
+                contact=row.get('contact', ''),
+                status=row.get('status', 'warm'),
+                intent=row.get('intent', 'Buy')
+            )
+            db.add(lead)
+            saved += 1
+        except Exception as e:
+            errors.append(str(e))
+    db.commit()
+    return {
+        "message": f"{saved} leads imported successfully!",
+        "saved": saved,
+        "errors": errors
+    }
 
 # Twilio setup — reads from .env
 twilio_client = TwilioClient(
