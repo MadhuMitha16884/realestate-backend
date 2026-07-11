@@ -514,8 +514,8 @@ def get_me(current_user: models.User = Depends(get_current_user)):
 @router.put("/auth/profile")
 def update_profile(
     name: str,
-    phone: Optional[str] = None,
-    company: Optional[str] = None,
+    phone: str = "",
+    company: str = "",
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
