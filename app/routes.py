@@ -14,6 +14,18 @@ import csv
 import io
 from fastapi import UploadFile, File
 
+
+# Twilio setup — reads from .env
+twilio_client = TwilioClient(
+    os.getenv("TWILIO_ACCOUNT_SID"),
+    os.getenv("TWILIO_AUTH_TOKEN")
+)
+TWILIO_FROM        = os.getenv("TWILIO_PHONE_NUMBER")
+AGENT_PHONE        = os.getenv("AGENT_PHONE_NUMBER")
+WHATSAPP_FROM      = os.getenv("TWILIO_WHATSAPP_FROM")  # whatsapp:+14155238886
+
+router = APIRouter()
+
 @router.post("/leads/import")
 async def import_leads(file: UploadFile = File(...), db: Session = Depends(get_db)):
     if not file.filename.endswith('.csv'):
@@ -43,17 +55,6 @@ async def import_leads(file: UploadFile = File(...), db: Session = Depends(get_d
         "saved": saved,
         "errors": errors
     }
-
-# Twilio setup — reads from .env
-twilio_client = TwilioClient(
-    os.getenv("TWILIO_ACCOUNT_SID"),
-    os.getenv("TWILIO_AUTH_TOKEN")
-)
-TWILIO_FROM        = os.getenv("TWILIO_PHONE_NUMBER")
-AGENT_PHONE        = os.getenv("AGENT_PHONE_NUMBER")
-WHATSAPP_FROM      = os.getenv("TWILIO_WHATSAPP_FROM")  # whatsapp:+14155238886
-
-router = APIRouter()
 
 # ── AUTH SETUP ─────────────────────────────────────────────────────────────────
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-this")
