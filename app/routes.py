@@ -170,7 +170,7 @@ def send_whatsapp_to_lead(lead_phone: str, lead_name: str, property_title: str,
     try:
         # Lead phone must be in format: whatsapp:+91xxxxxxxxxx
         to_whatsapp = f"whatsapp:{lead_phone}"
-        
+
         message = twilio_client.messages.create(
             body=(
                 f"Hello {lead_name}! 👋\n\n"
@@ -184,10 +184,12 @@ def send_whatsapp_to_lead(lead_phone: str, lead_name: str, property_title: str,
             from_=WHATSAPP_FROM,
             to=to_whatsapp
         )
-        print(f"WhatsApp sent to lead. SID: {message.sid}")
+
+        print(f"✅ WhatsApp sent to lead. SID: {message.sid}")
         return True
+
     except Exception as e:
-        print(f"WhatsApp failed: {e}")
+        print(f"❌ WhatsApp unavailable: {e}")
         return False
 
 
@@ -546,3 +548,18 @@ def change_password(
     current_user.hashed_password = hash_password(new_password)
     db.commit()
     return {"message": "Password changed successfully!"}
+
+@router.get("/integrations/status")
+def integration_status():
+    return {
+        "twilio_voice": {
+            "enabled": False,
+            "status": "unavailable",
+            "message": "Twilio account activation is required for live calls."
+        },
+        "whatsapp": {
+            "enabled": False,
+            "status": "unavailable",
+            "message": "WhatsApp Sender activation is required."
+        }
+    }    
