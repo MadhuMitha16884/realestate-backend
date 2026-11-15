@@ -360,7 +360,7 @@ def chat(request: schemas.ChatRequest, db: Session = Depends(get_db)):
 
     client = Groq(api_key=os.getenv("GROQ_API_KEY"))
     response = client.chat.completions.create(
-        model="openai/gpt-oss-120",
+        model="openai/gpt-oss-120b",
         messages=messages
     )
 
