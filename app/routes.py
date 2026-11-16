@@ -359,7 +359,7 @@ def chat(request: schemas.ChatRequest, db: Session = Depends(get_db)):
         messages.append({"role": h.role, "content": h.content})
 
     messages.append({"role": "user", "content": request.message})
-
+    
     client = Groq(api_key=os.getenv("GROQ_API_KEY"))
     response = client.chat.completions.create(
         model="openai/gpt-oss-20b",
@@ -400,7 +400,7 @@ def score_lead(lead_id: int, db: Session = Depends(get_db)):
     Reply with ONLY a number between 0 and 100. Nothing else.
     """
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-20b",
         messages=[
             {"role": "system", "content": "You are a real estate lead scoring expert. Reply only with a number."},
             {"role": "user", "content": prompt}
@@ -440,7 +440,7 @@ def match_property(lead_id: int, db: Session = Depends(get_db)):
     Reply with ONLY the property ID number that best matches. Nothing else.
     """
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-20b",
         messages=[
             {"role": "system", "content": "You are a real estate matching expert. Reply only with a property ID number."},
             {"role": "user", "content": prompt}
